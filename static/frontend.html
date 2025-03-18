@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bone Fracture Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: inline-block;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        img {
+            max-width: 100%;
+            margin-top: 20px;
+        }
+        .results {
+            margin-top: 20px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Bone Fracture Detection</h2>
+        <input type="file" id="imageUpload" accept="image/*">
+        <button onclick="uploadImage()">Detect</button>
+        <div id="output"></div>
+        <img id="preview" style="display:none;">
+        <div id="results" class="results"></div>
+        <h3>Annotated Image:</h3>
+        <img id="annotatedImage" style="display:none;">
+    </div>
+
+    <script>
+        function uploadImage() {
+            let fileInput = document.getElementById('imageUpload');
+            let file = fileInput.files[0];
+            if (!file) {
+                alert("Please select an image file");
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append("image", file);
+
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                let imgPreview = document.getElementById('preview');
+                imgPreview.src = e.target.result;
+                imgPreview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+
+            fetch("http://127.0.0.1:5000/predict", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                let resultDiv = document.getElementById('results');
+                resultDiv.innerHTML = "<h3>Detection Results:</h3>";
+                data.detections.forEach(det => {
+                    resultDiv.innerHTML += `<p>Confidence: ${det.confidence.toFixed(2)} | Severity: ${det.severity}</p>`;
+                });
+
+                // Display annotated image
+                let annotatedImg = document.getElementById('annotatedImage');
+                annotatedImg.src = data.annotated_image_url;
+                annotatedImg.style.display = 'block';
+            })
+            .catch(error => console.error("Error:", error));
+        }
+    </script>
+</body>
+</html>
