@@ -1,17 +1,18 @@
 from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS  # Import CORS
+from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import os
 import cv2
 import numpy as np
 from PIL import Image
 from ultralytics import YOLO
+from transformers import pipeline
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app)
 
-# Load YOLO model
-MODEL_PATH = "mnt/data/best.pt"
+# Load YOLOv8 model
+MODEL_PATH = "mnt/data/best.pt"  # Ensure this is the correct model path
 model = YOLO(MODEL_PATH)
 
 # Upload folders
@@ -23,13 +24,21 @@ os.makedirs(ANNOTATED_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['ANNOTATED_FOLDER'] = ANNOTATED_FOLDER
 
+# Load Hugging Face LLM (GPT-based for better text generation)
+try:
+    llm = pipeline("text-generation", model="gpt2")
+    print("LLM Model Loaded Successfully!")
+except Exception as e:
+    print(f"Error loading LLM model: {str(e)}")
+    llm = None  # Fallback if LLM fails to load
+
 # Severity classification threshold
 SEVERITY_THRESHOLD = 0.5
+
 
 def draw_annotations(image_path, results, output_path):
     """Draws bounding boxes and severity labels on the image."""
     img = cv2.imread(image_path)
-
     for result in results:
         for box in result.boxes:
             x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
@@ -46,8 +55,45 @@ def draw_annotations(image_path, results, output_path):
 
     cv2.imwrite(output_path, img)
 
+
+def generate_suggestion(severity, confidence):
+    """Uses LLM (GPT) to generate dynamic suggestions based on severity & confidence."""
+    if severity == "No Fracture":
+        return {
+            "severity_assessment": "No Fracture Detected",
+            "urgency": "No medical intervention required.",
+            "recommendations": [
+                "Maintain a healthy diet and regular exercise for bone strength.",
+                "Ensure proper calcium and vitamin D intake.",
+                "Stay hydrated and avoid excessive stress on bones."
+            ],
+            "complexity": "None"
+        }
+
+    if not llm:
+        return {"error": "LLM model not loaded. Cannot generate medical recommendations."}
+
+    prompt = f"""
+    Patient has a bone fracture classified as {severity} with confidence {confidence:.2f}.
+    Provide a medical recommendation, including severity assessment, urgency, recommended treatments, and complexity level.
+    """
+
+    try:
+        response = llm(prompt, max_length=150, num_return_sequences=1)[0]["generated_text"].split(". ")
+        return {
+            "severity_assessment": response[0] if len(response) > 0 else "No data",
+            "urgency": response[1] if len(response) > 1 else "No data",
+            "recommendations": response[2:] if len(response) > 2 else ["No data"],
+            "complexity": "High" if "surgery" in response[0].lower() else "Low" if "rest" in response[
+                0].lower() else "Moderate"
+        }
+    except Exception as e:
+        return {"error": f"Failed to generate LLM response: {str(e)}"}
+
+
 @app.route("/predict", methods=["POST"])
 def predict():
+    """Handles image upload, runs YOLOv8 detection, and generates AI-based suggestions."""
     if "image" not in request.files:
         return jsonify({"error": "No image file provided"}), 400
 
@@ -56,38 +102,46 @@ def predict():
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(filepath)
 
-    # Load image and run inference
-    image = Image.open(filepath)
-    results = model(image)
+    try:
+        image = Image.open(filepath)
+        results = model(image)
+    except Exception as e:
+        return jsonify({"error": f"Failed to process image: {str(e)}"}), 500
 
-    # Process results
-    detections = []
-    for result in results:
-        for box in result.boxes:
-            x1, y1, x2, y2 = box.xyxy[0].tolist()
-            confidence = box.conf[0].item()
-            class_id = int(box.cls[0].item())
-            severity = "Severe" if confidence > SEVERITY_THRESHOLD else "Mild"
+    detections, highest_confidence, most_severe = [], 0, "No Fracture"
+    try:
+        for result in results:
+            for box in result.boxes:
+                x1, y1, x2, y2 = box.xyxy[0].tolist()
+                confidence = box.conf[0].item()
+                severity = "Severe" if confidence > SEVERITY_THRESHOLD else "Mild"
 
-            detections.append({
-                "bbox": [x1, y1, x2, y2],
-                "confidence": confidence,
-                "class": class_id,
-                "severity": severity
-            })
+                if confidence > highest_confidence:
+                    highest_confidence = confidence
+                if severity == "Severe":
+                    most_severe = "Severe"
 
-    # Annotate and save the image
+                detections.append({"bbox": [x1, y1, x2, y2], "confidence": confidence, "severity": severity})
+    except Exception as e:
+        return jsonify({"error": f"Error during object detection: {str(e)}"}), 500
+
+    patient_suggestion = generate_suggestion(most_severe, highest_confidence)
     annotated_path = os.path.join(app.config['ANNOTATED_FOLDER'], filename)
     draw_annotations(filepath, results, annotated_path)
 
     return jsonify({
         "detections": detections,
-        "annotated_image_url": f"http://127.0.0.1:5000/download/{filename}"
+        "annotated_image_url": f"/download/{filename}",
+        "patient_suggestion": patient_suggestion
     })
 
-@app.route("/download/<filename>")
-def download_file(filename):
-    return send_from_directory(app.config["ANNOTATED_FOLDER"], filename)
+# Define the path for annotated images
+ANNOTATED_FOLDER = "annotated_images"
+
+@app.route("/get_annotated/<filename>")
+def get_annotated_image(filename):
+    """Fetch the annotated image from the 'annotated_images' folder."""
+    return send_from_directory(ANNOTATED_FOLDER, filename)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

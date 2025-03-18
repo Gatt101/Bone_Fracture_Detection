@@ -4,96 +4,412 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bone Fracture Detection</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+        :root {
+            --primary: #0077cc;
+            --primary-light: #2b98e6;
+            --secondary: #34495e;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --light: #f8f9fa;
+            --dark: #343a40;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background-color: #f4f4f4;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            line-height: 1.6;
+            color: var(--dark);
         }
+
         .container {
-            background: white;
-            padding: 20px;
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 0 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: white;
             border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            display: inline-block;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
-        input[type="file"] {
-            margin: 10px 0;
+
+        header h1 {
+            margin: 0;
+            font-size: 2.5rem;
         }
-        button {
-            background: #007bff;
+
+        header p {
+            margin: 0.5rem 0 0;
+            opacity: 0.9;
+        }
+
+        .upload-section {
+            background-color: white;
+            border-radius: 10px;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-top: 2rem;
+        }
+
+        .file-input-container {
+            position: relative;
+            margin: 1.5rem auto;
+            max-width: 400px;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 1rem;
+            background-color: #f5f5f5;
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-input-label:hover {
+            border-color: var(--primary);
+            background-color: #f0f9ff;
+        }
+
+        .file-input-icon {
+            display: block;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+        }
+
+        .file-input {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .button-primary {
+            background: var(--primary);
             color: white;
             border: none;
-            padding: 10px;
+            padding: 0.75rem 2rem;
+            font-size: 1rem;
+            border-radius: 5px;
             cursor: pointer;
+            transition: 0.3s;
+            margin-top: 1rem;
+        }
+
+        .button-primary:hover {
+            background: var(--primary-light);
+        }
+
+        .button-primary:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid var(--primary);
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            color: var(--danger);
+            padding: 1rem;
+            background-color: rgba(220, 53, 69, 0.1);
+            border-radius: 4px;
+            margin: 1rem 0;
+            text-align: center;
+            display: none;
+        }
+
+        .results-container {
+            display: none;
+        }
+
+        .results-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .image-preview, .analysis-results {
+            background-color: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .image-preview h3, .analysis-results h3 {
+            margin-top: 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #eee;
+            color: var(--secondary);
+        }
+
+        .image-container {
+            position: relative;
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        .image-container img {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+
+        .detection-list {
+            padding: 0;
+            list-style: none;
+        }
+
+        .detection-item {
+            background-color: #f8f9fa;
+            border-left: 5px solid var(--primary);
+            padding: 1rem;
+            margin-bottom: 0.75rem;
             border-radius: 5px;
         }
-        button:hover {
-            background: #0056b3;
+
+        .detection-item.severe {
+            border-left-color: var(--danger);
         }
-        img {
-            max-width: 100%;
-            margin-top: 20px;
+
+        .detection-item.mild {
+            border-left-color: var(--warning);
         }
-        .results {
-            margin-top: 20px;
+
+        .suggestion-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            background-color: #f8f9fa;
+        }
+
+        .suggestion-card h4 {
+            margin-top: 0;
+            color: var(--secondary);
+        }
+
+        .suggestion-card.severe {
+            border-left: 5px solid var(--danger);
+        }
+
+        .suggestion-card.mild {
+            border-left: 5px solid var(--warning);
+        }
+
+        .suggestion-card ul {
             text-align: left;
+            padding-left: 1.5rem;
+        }
+
+        .suggestion-card li {
+            margin-bottom: 0.5rem;
+        }
+
+        .confidence-note {
+            font-style: italic;
+            margin-top: 1rem;
+            padding: 0.5rem;
+            background-color: rgba(0,0,0,0.05);
+            border-radius: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .results-section {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Bone Fracture Detection</h2>
-        <input type="file" id="imageUpload" accept="image/*">
-        <button onclick="uploadImage()">Detect</button>
-        <div id="output"></div>
-        <img id="preview" style="display:none;">
-        <div id="results" class="results"></div>
-        <h3>Annotated Image:</h3>
-        <img id="annotatedImage" style="display:none;">
+        <header>
+            <h1><i class="fas fa-bone"></i> Bone Fracture Detection</h1>
+            <p>Upload an X-ray image to detect and analyze bone fractures</p>
+        </header>
+
+        <div class="upload-section">
+            <h2>Upload X-ray Image</h2>
+            <div class="file-input-container">
+                <label class="file-input-label">
+                    <i class="fas fa-upload file-input-icon"></i>
+                    <span id="file-name">Choose an X-ray image</span>
+                    <input type="file" id="imageUpload" class="file-input" accept="image/*">
+                </label>
+            </div>
+
+            <button id="detectBtn" class="button-primary" disabled>
+                <i class="fas fa-search"></i> Detect Fractures
+            </button>
+
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Analyzing image...</p>
+            </div>
+
+            <div id="errorMessage" class="error-message"></div>
+        </div>
+
+        <div id="results-container" class="results-container">
+            <div class="results-section">
+                <div class="image-preview">
+                    <h3>Original Image</h3>
+                    <div class="image-container">
+                        <img id="preview" alt="Original X-ray">
+                    </div>
+                </div>
+
+                <div class="image-preview">
+                    <h3>Annotated Image</h3>
+                    <div class="image-container">
+                        <img id="annotatedImage" alt="Annotated X-ray">
+                    </div>
+                </div>
+            </div>
+
+            <div class="analysis-results">
+                <h3>Detection Results</h3>
+                <ul id="detectionResults" class="detection-list"></ul>
+                <div id="patientSuggestion"></div>
+            </div>
+        </div>
     </div>
 
-    <script>
-        function uploadImage() {
-            let fileInput = document.getElementById('imageUpload');
-            let file = fileInput.files[0];
-            if (!file) {
-                alert("Please select an image file");
-                return;
+     <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.getElementById('imageUpload');
+            const fileNameDisplay = document.getElementById('file-name');
+            const detectBtn = document.getElementById('detectBtn');
+            const loading = document.getElementById('loading');
+            const errorMessage = document.getElementById('errorMessage');
+            const resultsContainer = document.getElementById('results-container');
+
+            fileInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    fileNameDisplay.textContent = this.files[0].name;
+                    detectBtn.disabled = false;
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        document.getElementById('preview').src = e.target.result;
+                    };
+                    reader.readAsDataURL(this.files[0]);
+                } else {
+                    fileNameDisplay.textContent = 'Choose an X-ray image';
+                    detectBtn.disabled = true;
+                }
+            });
+
+            detectBtn.addEventListener('click', uploadImage);
+            const apiUrl = "";  // Explicit backend URL
+
+            function uploadImage() {
+                const file = fileInput.files[0];
+                if (!file) {
+                    showError("Please select an image file");
+                    return;
+                }
+
+                loading.style.display = 'block';
+                detectBtn.disabled = true;
+                errorMessage.style.display = 'none';
+                resultsContainer.style.display = 'none';
+
+                const formData = new FormData();
+                formData.append("image", file);
+
+                fetch("http://127.0.0.1:5000/predict", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Server returned ' + response.status + ': ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    loading.style.display = 'none';
+                    detectBtn.disabled = false;
+                    displayResults(data);
+                    resultsContainer.style.display = 'block';
+                })
+                .catch(error => {
+                    loading.style.display = 'none';
+                    detectBtn.disabled = false;
+                    showError("Error: " + error.message);
+                    console.error("Upload error:", error);
+                });
             }
 
-            let formData = new FormData();
-            formData.append("image", file);
+            function showError(message) {
+                errorMessage.textContent = message;
+                errorMessage.style.display = 'block';
+            }
 
-            let reader = new FileReader();
-            reader.onload = function(e) {
-                let imgPreview = document.getElementById('preview');
-                imgPreview.src = e.target.result;
-                imgPreview.style.display = 'block';
-            };
-            reader.readAsDataURL(file);
+           function displayResults(data) {
+    const detectionsList = document.getElementById('detectionResults');
+    detectionsList.innerHTML = '';
 
-            fetch("http://127.0.0.1:5000/predict", {
-                method: "POST",
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                let resultDiv = document.getElementById('results');
-                resultDiv.innerHTML = "<h3>Detection Results:</h3>";
-                data.detections.forEach(det => {
-                    resultDiv.innerHTML += `<p>Confidence: ${det.confidence.toFixed(2)} | Severity: ${det.severity}</p>`;
-                });
+    if (!data.detections || data.detections.length === 0) {
+        detectionsList.innerHTML = '<li>No fractures detected</li>';
+    } else {
+        data.detections.forEach(det => {
+            const severityClass = det.severity.toLowerCase() === 'severe' ? 'severe' :
+                                  (det.severity.toLowerCase() === 'mild' ? 'mild' : '');
+            const item = document.createElement('li');
+            item.className = `detection-item ${severityClass}`;
+            item.innerHTML = `
+                <strong>${det.severity} Fracture</strong>
+                <br>Confidence: ${(det.confidence * 100).toFixed(1)}%
+            `;
+            detectionsList.appendChild(item);
+        });
+    }
 
-                // Display annotated image
-                let annotatedImg = document.getElementById('annotatedImage');
-                annotatedImg.src = data.annotated_image_url;
-                annotatedImg.style.display = 'block';
-            })
-            .catch(error => console.error("Error:", error));
-        }
+    // Fetch annotated image from backend
+    const annotatedImageUrl = `http://127.0.0.1:5000/get_annotated/${data.annotated_image_filename}`;
+    document.getElementById('annotatedImage').src = annotatedImageUrl;
+  }
+        });
     </script>
 </body>
 </html>
