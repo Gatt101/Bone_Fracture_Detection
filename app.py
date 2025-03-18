@@ -3,7 +3,6 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import os
 import cv2
-import numpy as np
 from PIL import Image
 from ultralytics import YOLO
 from transformers import pipeline
@@ -54,10 +53,8 @@ def draw_annotations(image_path, results, output_path):
             cv2.putText(img, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
     cv2.imwrite(output_path, img)
-
-
-def generate_suggestion(severity, confidence):
-    """Uses LLM (GPT) to generate dynamic suggestions based on severity & confidence."""
+def generate_suggestion(severity):
+    """Generates dynamic suggestions based on severity."""
     if severity == "No Fracture":
         return {
             "severity_assessment": "No Fracture Detected",
@@ -71,11 +68,27 @@ def generate_suggestion(severity, confidence):
         }
 
     if not llm:
-        return {"error": "LLM model not loaded. Cannot generate medical recommendations."}
+        # Fallback if LLM fails to load
+        return {
+            "severity_assessment": f"{severity} Fracture Detected",
+            "urgency": "Consult a doctor immediately." if severity == "Severe" else "Schedule a doctor's appointment.",
+            "recommendations": [
+                "Avoid putting weight on the affected area.",
+                "Use ice packs to reduce swelling.",
+                "Take over-the-counter pain relievers if necessary."
+            ],
+            "complexity": "High" if severity == "Severe" else "Low"
+        }
 
+    # Specific prompt for medical recommendations based on severity
     prompt = f"""
-    Patient has a bone fracture classified as {severity} with confidence {confidence:.2f}.
-    Provide a medical recommendation, including severity assessment, urgency, recommended treatments, and complexity level.
+    A patient has a bone fracture classified as {severity}.
+    Provide a medical recommendation, including:
+    1. Severity assessment (e.g., 'Severe Fracture Detected').
+    2. Urgency (e.g., 'Consult a doctor immediately' or 'Schedule a doctor's appointment').
+    3. Recommended treatments (e.g., 'Use a cast', 'Avoid weight-bearing activities').
+    4. Complexity level (e.g., 'High', 'Moderate', 'Low').
+    Ensure the response is strictly medical and relevant to bone fractures.
     """
 
     try:
@@ -84,13 +97,20 @@ def generate_suggestion(severity, confidence):
             "severity_assessment": response[0] if len(response) > 0 else "No data",
             "urgency": response[1] if len(response) > 1 else "No data",
             "recommendations": response[2:] if len(response) > 2 else ["No data"],
-            "complexity": "High" if "surgery" in response[0].lower() else "Low" if "rest" in response[
-                0].lower() else "Moderate"
+            "complexity": "High" if "surgery" in response[0].lower() else "Low" if "rest" in response[0].lower() else "Moderate"
         }
     except Exception as e:
-        return {"error": f"Failed to generate LLM response: {str(e)}"}
-
-
+        return {
+            "error": f"Failed to generate LLM response: {str(e)}",
+            "severity_assessment": f"{severity} Fracture Detected",
+            "urgency": "Consult a doctor immediately." if severity == "Severe" else "Schedule a doctor's appointment.",
+            "recommendations": [
+                "Avoid putting weight on the affected area.",
+                "Use ice packs to reduce swelling.",
+                "Take over-the-counter pain relievers if necessary."
+            ],
+            "complexity": "High" if severity == "Severe" else "Low"
+        }
 @app.route("/predict", methods=["POST"])
 def predict():
     """Handles image upload, runs YOLOv8 detection, and generates AI-based suggestions."""

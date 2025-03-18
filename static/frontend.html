@@ -314,78 +314,78 @@
         </div>
     </div>
 
-     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const fileInput = document.getElementById('imageUpload');
-            const fileNameDisplay = document.getElementById('file-name');
-            const detectBtn = document.getElementById('detectBtn');
-            const loading = document.getElementById('loading');
-            const errorMessage = document.getElementById('errorMessage');
-            const resultsContainer = document.getElementById('results-container');
+  <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('imageUpload');
+    const fileNameDisplay = document.getElementById('file-name');
+    const detectBtn = document.getElementById('detectBtn');
+    const loading = document.getElementById('loading');
+    const errorMessage = document.getElementById('errorMessage');
+    const resultsContainer = document.getElementById('results-container');
 
-            fileInput.addEventListener('change', function() {
-                if (this.files && this.files[0]) {
-                    fileNameDisplay.textContent = this.files[0].name;
-                    detectBtn.disabled = false;
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        document.getElementById('preview').src = e.target.result;
-                    };
-                    reader.readAsDataURL(this.files[0]);
-                } else {
-                    fileNameDisplay.textContent = 'Choose an X-ray image';
-                    detectBtn.disabled = true;
-                }
-            });
+    fileInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            fileNameDisplay.textContent = this.files[0].name;
+            detectBtn.disabled = false;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('preview').src = e.target.result;
+            };
+            reader.readAsDataURL(this.files[0]);
+        } else {
+            fileNameDisplay.textContent = 'Choose an X-ray image';
+            detectBtn.disabled = true;
+        }
+    });
 
-            detectBtn.addEventListener('click', uploadImage);
-            const apiUrl = "";  // Explicit backend URL
+    detectBtn.addEventListener('click', uploadImage);
+    const apiUrl = "";  // Explicit backend URL
 
-            function uploadImage() {
-                const file = fileInput.files[0];
-                if (!file) {
-                    showError("Please select an image file");
-                    return;
-                }
+    function uploadImage() {
+        const file = fileInput.files[0];
+        if (!file) {
+            showError("Please select an image file");
+            return;
+        }
 
-                loading.style.display = 'block';
-                detectBtn.disabled = true;
-                errorMessage.style.display = 'none';
-                resultsContainer.style.display = 'none';
+        loading.style.display = 'block';
+        detectBtn.disabled = true;
+        errorMessage.style.display = 'none';
+        resultsContainer.style.display = 'none';
 
-                const formData = new FormData();
-                formData.append("image", file);
+        const formData = new FormData();
+        formData.append("image", file);
 
-                fetch("http://127.0.0.1:5000/predict", {
-                    method: "POST",
-                    body: formData
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Server returned ' + response.status + ': ' + response.statusText);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    loading.style.display = 'none';
-                    detectBtn.disabled = false;
-                    displayResults(data);
-                    resultsContainer.style.display = 'block';
-                })
-                .catch(error => {
-                    loading.style.display = 'none';
-                    detectBtn.disabled = false;
-                    showError("Error: " + error.message);
-                    console.error("Upload error:", error);
-                });
+        fetch("http://127.0.0.1:5000/predict", {
+            method: "POST",
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Server returned ' + response.status + ': ' + response.statusText);
             }
+            return response.json();
+        })
+        .then(data => {
+            loading.style.display = 'none';
+            detectBtn.disabled = false;
+            displayResults(data);
+            resultsContainer.style.display = 'block';
+        })
+        .catch(error => {
+            loading.style.display = 'none';
+            detectBtn.disabled = false;
+            showError("Error: " + error.message);
+            console.error("Upload error:", error);
+        });
+    }
 
-            function showError(message) {
-                errorMessage.textContent = message;
-                errorMessage.style.display = 'block';
-            }
+    function showError(message) {
+        errorMessage.textContent = message;
+        errorMessage.style.display = 'block';
+    }
 
-           function displayResults(data) {
+   function displayResults(data) {
     const detectionsList = document.getElementById('detectionResults');
     detectionsList.innerHTML = '';
 
@@ -406,10 +406,34 @@
     }
 
     // Fetch annotated image from backend
-    const annotatedImageUrl = `http://127.0.0.1:5000/get_annotated/${data.annotated_image_filename}`;
+    const annotatedImageUrl = `http://127.0.0.1:5000/get_annotated/${data.annotated_image_url.split('/').pop()}`;
     document.getElementById('annotatedImage').src = annotatedImageUrl;
-  }
-        });
-    </script>
+
+    // Display LLM information
+    const patientSuggestion = data.patient_suggestion;
+    const suggestionContainer = document.getElementById('patientSuggestion');
+    if (patientSuggestion.error) {
+        suggestionContainer.innerHTML = `
+            <div class="suggestion-card error">
+                <h4>Error Generating Recommendations</h4>
+                <p>${patientSuggestion.error}</p>
+            </div>
+        `;
+    } else {
+        suggestionContainer.innerHTML = `
+            <div class="suggestion-card ${patientSuggestion.complexity.toLowerCase()}">
+                <h4>Severity Assessment: ${patientSuggestion.severity_assessment}</h4>
+                <p><strong>Urgency:</strong> ${patientSuggestion.urgency}</p>
+                <h4>Recommendations:</h4>
+                <ul>
+                    ${patientSuggestion.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                </ul>
+                <p class="confidence-note">Confidence: ${(data.highest_confidence * 100).toFixed(1)}%</p>
+            </div>
+        `;
+    }
+}
+});
+</script>
 </body>
 </html>
