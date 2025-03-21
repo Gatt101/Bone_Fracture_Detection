@@ -311,6 +311,13 @@
                 <ul id="detectionResults" class="detection-list"></ul>
                 <div id="patientSuggestion"></div>
             </div>
+
+            <div class="print-button">
+                <button onclick="printResults()" class="button-primary">
+                    <i class="fas fa-print"></i> Print Results
+
+                </button>
+            </div>
         </div>
     </div>
 
@@ -434,6 +441,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 }
 });
+function printResults() {
+    const resultsContainer = document.getElementById('results-container');
+    const otherElements = document.querySelectorAll('body > *:not(#results-container)');
+
+    // Hide all other elements
+    otherElements.forEach(element => element.style.display = 'none');
+
+    // Print the results
+    window.print();
+
+    // Restore the visibility of other elements
+    otherElements.forEach(element => element.style.display = '');
+}
+
 </script>
 </body>
 </html>

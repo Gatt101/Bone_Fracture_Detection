@@ -36,7 +36,6 @@ SEVERITY_THRESHOLD = 0.5
 
 
 def draw_annotations(image_path, results, output_path):
-    """Draws bounding boxes and severity labels on the image."""
     img = cv2.imread(image_path)
     for result in results:
         for box in result.boxes:
@@ -53,8 +52,10 @@ def draw_annotations(image_path, results, output_path):
             cv2.putText(img, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
     cv2.imwrite(output_path, img)
-def generate_suggestion(severity):
-    """Generates dynamic suggestions based on severity."""
+
+
+
+def generate_suggestion(severity,confidence):
     if severity == "No Fracture":
         return {
             "severity_assessment": "No Fracture Detected",
@@ -111,6 +112,7 @@ def generate_suggestion(severity):
             ],
             "complexity": "High" if severity == "Severe" else "Low"
         }
+
 @app.route("/predict", methods=["POST"])
 def predict():
     """Handles image upload, runs YOLOv8 detection, and generates AI-based suggestions."""
