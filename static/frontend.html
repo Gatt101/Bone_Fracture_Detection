@@ -442,19 +442,33 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 });
 function printResults() {
-    const resultsContainer = document.getElementById('results-container');
-    const otherElements = document.querySelectorAll('body > *:not(#results-container)');
+    // Clone the results container to avoid modifying the original DOM
+    const resultsContainer = document.getElementById('results-container').cloneNode(true);
 
-    // Hide all other elements
-    otherElements.forEach(element => element.style.display = 'none');
+    // Remove elements that should not be printed
+    const elementsToRemove = resultsContainer.querySelectorAll('.print-button, .file-input-container, .button-primary');
+    elementsToRemove.forEach(element => element.remove());
 
-    // Print the results
-    window.print();
+    // Create a new window for printing
+    const printWindow = window.open('', '', 'height=600,width=800');
+    printWindow.document.write('<html><head><title>Print Results</title>');
+    printWindow.document.write('<style>');
+    printWindow.document.write(`
+        body { font-family: Arial, sans-serif; }
+        .results-container { max-width: 800px; margin: 0 auto; }
+        .image-preview, .analysis-results { margin-bottom: 20px; }
+        .detection-item { padding: 10px; margin-bottom: 10px; border-left: 5px solid #0077cc; }
+        .suggestion-card { padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .confidence-note { font-style: italic; margin-top: 10px; }
+    `);
+    printWindow.document.write('</style></head><body>');
+    printWindow.document.write(resultsContainer.innerHTML);
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
 
-    // Restore the visibility of other elements
-    otherElements.forEach(element => element.style.display = '');
+    // Trigger the print dialog
+    printWindow.print();
 }
-
 </script>
 </body>
 </html>
