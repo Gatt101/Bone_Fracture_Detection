@@ -509,8 +509,7 @@
       </div>
     </div>
   </main>
-
-  <script>
+<script>
   const chatBox = document.getElementById("chat-box");
   const chatForm = document.getElementById("chat-form");
   const messageInput = document.getElementById("message");
@@ -526,7 +525,11 @@
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
-  function clearChat() {
+  async function clearChat() {
+    // Clear backend history
+    await fetch("http://localhost:5000/clear_history", { method: "POST" });
+
+    // Reset UI
     chatBox.innerHTML = `<div class="message bot">
       👋 I'm here to help analyze X-ray images and provide orthopedic suggestions.
       Upload an image or ask your query.
@@ -552,6 +555,13 @@
     messageInput.value = "";
     imageInput.value = null;
 
+    // Show typing indicator
+    const typingDiv = document.createElement("div");
+    typingDiv.className = "typing-indicator bot";
+    typingDiv.innerHTML = `<span class="dot"></span><span class="dot"></span><span class="dot"></span>`;
+    chatBox.appendChild(typingDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+
     try {
       const res = await fetch("http://localhost:5000/chat", {
         method: "POST",
@@ -559,6 +569,9 @@
       });
 
       const data = await res.json();
+
+      // Remove typing indicator
+      chatBox.removeChild(typingDiv);
 
       if (data.response) addMessage(data.response, "bot");
       if (data.report_summary) addMessage("📄 " + data.report_summary, "bot");
@@ -571,6 +584,7 @@
 
     } catch (err) {
       console.error(err);
+      chatBox.removeChild(typingDiv);
       addMessage("⚠️ Failed to get response from server.", "bot");
     }
   });
