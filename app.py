@@ -12,7 +12,6 @@ from dotenv import load_dotenv
 
 # ==== Load environment variables ====
 load_dotenv()
-
 app = Flask(__name__)
 CORS(app)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "fallback_dev_key")
