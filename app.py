@@ -29,7 +29,7 @@ MODEL_PATH = os.getenv("MODEL_PATH", "mnt/data/best.pt")
 model = YOLO(MODEL_PATH)
 
 # ==== Groq LLM Setup ====
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 HEADERS = {
     "Authorization": f"Bearer {GROQ_API_KEY}",
