@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>X-Ray Buddy – Orthopedic AI Assistant</title>
+   <style>
+    :root {
+      --primary: #4361ee;
+      --primary-light: #4895ef;
+      --secondary: #3f37c9;
+      --light: #f8f9fa;
+      --dark: #212529;
+      --success: #38b000;
+      --warning: #ff9e00;
+      --danger: #d90429;
+      --gray-100: #f8f9fa;
+      --gray-200: #e9ecef;
+      --gray-300: #dee2e6;
+      --gray-400: #ced4da;
+      --gray-500: #adb5bd;
+      --gray-600: #6c757d;
+      --gray-700: #495057;
+      --gray-800: #343a40;
+      --gray-900: #212529;
+      --transition: all 0.3s ease;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.12);
+      --shadow: 0 4px 6px rgba(0,0,0,0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--light);
+      color: var(--dark);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #fff;
+      padding: 1rem 2rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--primary);
+    }
+
+    .logo i {
+      font-size: 1.5rem;
+    }
+
+    .logo h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius);
+      border: none;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9rem;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-light);
+      transform: translateY(-2px);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--gray-700);
+      border: 1px solid var(--gray-300);
+    }
+
+    .btn-outline:hover {
+      background: var(--gray-100);
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      padding: 1.5rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+      gap: 1.5rem;
+    }
+
+    .chat-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .chat-box {
+      flex: 1;
+      padding: 1.5rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      max-height: 65vh;
+      min-height: 400px;
+    }
+
+    .message {
+      max-width: 80%;
+      padding: 0.75rem 1rem;
+      border-radius: 1rem;
+      line-height: 1.5;
+      font-size: 0.95rem;
+      animation: fadeIn 0.3s ease;
+      position: relative;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .user {
+      background: var(--primary);
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 0;
+      margin-left: auto;
+    }
+
+    .bot {
+      background: var(--gray-200);
+      color: var(--gray-800);
+      align-self: flex-start;
+      border-bottom-left-radius: 0;
+    }
+
+    .report {
+      background: var(--light);
+      border-left: 4px solid var(--primary);
+      padding: 0.75rem;
+      margin-top: 0.5rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+
+    .input-area {
+      display: flex;
+      padding: 1rem;
+      gap: 0.75rem;
+      background: var(--gray-100);
+      border-top: 1px solid var(--gray-200);
+      align-items: center;
+    }
+
+    .input-wrapper {
+      flex: 1;
+      position: relative;
+      background: white;
+      border-radius: var(--radius);
+      border: 1px solid var(--gray-300);
+      display: flex;
+      align-items: center;
+      padding: 0 0.5rem;
+      transition: var(--transition);
+    }
+
+    .input-wrapper:focus-within {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+    }
+
+    textarea {
+      flex: 1;
+      padding: 0.75rem;
+      border: none;
+      font-size: 0.95rem;
+      resize: none;
+      font-family: inherit;
+      outline: none;
+      background: transparent;
+    }
+
+    .file-upload {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .file-upload label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      color: var(--gray-600);
+      transition: var(--transition);
+    }
+
+    .file-upload label:hover {
+      background: var(--gray-200);
+      color: var(--primary);
+    }
+
+    .file-upload input[type="file"] {
+      position: absolute;
+      width: 0;
+      height: 0;
+      opacity: 0;
+    }
+
+    .file-name {
+      max-width: 120px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 0.8rem;
+      color: var(--gray-600);
+      margin-left: 0.5rem;
+      display: none;
+    }
+
+    .results-container {
+      display: none;
+      margin-top: 1.5rem;
+      padding: 1.5rem;
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      animation: slideUp 0.4s ease;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    .results-header h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--gray-800);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .results-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .action-btn {
+      background: transparent;
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gray-600);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .action-btn:hover {
+      background: var(--gray-200);
+      color: var(--primary);
+    }
+
+    .annotated-image {
+      width: 100%;
+      border-radius: var(--radius);
+      border: 1px solid var(--gray-300);
+      margin-bottom: 1rem;
+      max-height: 400px;
+      object-fit: contain;
+    }
+
+    .severity-indicator {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.75rem;
+      border-radius: 100px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+
+    .severe {
+      background: rgba(217, 4, 41, 0.1);
+      color: var(--danger);
+    }
+
+    .mild {
+      background: rgba(255, 158, 0, 0.1);
+      color: var(--warning);
+    }
+
+    .none {
+      background: rgba(56, 176, 0, 0.1);
+      color: var(--success);
+    }
+
+    .recommendations {
+      margin-top: 1rem;
+      background: var(--gray-100);
+      padding: 1rem;
+      border-radius: var(--radius);
+    }
+
+    .recommendations h4 {
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+      color: var(--gray-700);
+    }
+
+    .recommendations ul {
+      padding-left: 1.5rem;
+      margin: 0.5rem 0;
+    }
+
+    .recommendations li {
+      margin-bottom: 0.5rem;
+    }
+
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      color: var(--gray-600);
+      font-size: 0.9rem;
+      padding: 0.5rem;
+      border-radius: var(--radius);
+      background: var(--gray-100);
+      margin-bottom: 0.5rem;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      background: var(--gray-500);
+      border-radius: 50%;
+      margin: 0 1px;
+      animation: typingAnimation 1.4s infinite;
+    }
+
+    .dot:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .dot:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes typingAnimation {
+      0% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+      100% { transform: translateY(0); }
+    }
+
+    /* Responsive styles */
+    @media (max-width: 768px) {
+      main {
+        padding: 1rem;
+        flex-direction: column;
+      }
+
+      .message {
+        max-width: 90%;
+      }
+
+      .logo h1 {
+        font-size: 1.2rem;
+      }
+    }
+
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --light: #121212;
+        --dark: #f8f9fa;
+        --gray-100: #1e1e1e;
+        --gray-200: #2d2d2d;
+        --gray-300: #3d3d3d;
+        --gray-600: #a0a0a0;
+        --gray-700: #bbbbbb;
+        --gray-800: #d4d4d4;
+        --gray-900: #f5f5f5;
+      }
+
+      body {
+        background: var(--light);
+        color: var(--dark);
+      }
+
+      header, .chat-container, .results-container {
+        background: #1a1a1a;
+      }
+
+      .bot {
+        background: #2d2d2d;
+        color: #e0e0e0;
+      }
+
+      .input-wrapper {
+        background: #1e1e1e;
+        border-color: #3d3d3d;
+      }
+
+      textarea {
+        color: #e0e0e0;
+      }
+
+      .recommendations {
+        background: #1e1e1e;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <i class="icon">🦴</i>
+      <h1>Orthopedic AI Agent</h1>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-outline" onclick="clearChat()">Clear Chat</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="chat-container">
+      <div class="chat-box" id="chat-box">
+        <div class="message bot">
+          👋 I'm here to help analyze X-ray images and provide orthopedic suggestions.
+          Upload an image or ask your query.
+        </div>
+      </div>
+
+      <form class="input-area" id="chat-form">
+        <div class="input-wrapper">
+          <textarea id="message" rows="1" placeholder="Type a question or upload X-ray..."></textarea>
+        </div>
+        <div class="file-upload">
+          <label for="image">
+            📁
+          </label>
+          <input type="file" id="image" accept="image/*">
+        </div>
+        <button type="submit" class="btn btn-primary">Send</button>
+      </form>
+
+      <div class="results-container" id="annotated-section">
+        <div class="results-header">
+          <h3>📷 Annotated X-Ray</h3>
+        </div>
+        <img id="annotated-image" class="annotated-image" src="" alt="Annotated X-ray">
+      </div>
+    </div>
+  </main>
+<script>
+  const chatBox = document.getElementById("chat-box");
+  const chatForm = document.getElementById("chat-form");
+  const messageInput = document.getElementById("message");
+  const imageInput = document.getElementById("image");
+  const annotatedSection = document.getElementById("annotated-section");
+  const annotatedImage = document.getElementById("annotated-image");
+
+  function addMessage(text, sender = "user") {
+    const msgDiv = document.createElement("div");
+    msgDiv.className = `message ${sender}`;
+    msgDiv.innerText = text;
+    chatBox.appendChild(msgDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  async function clearChat() {
+    // Clear backend history
+    await fetch("http://localhost:5000/clear_history", { method: "POST" });
+
+    // Reset UI
+    chatBox.innerHTML = `<div class="message bot">
+      👋 I'm here to help analyze X-ray images and provide orthopedic suggestions.
+      Upload an image or ask your query.
+    </div>`;
+    annotatedSection.style.display = "none";
+    annotatedImage.src = "";
+  }
+
+  chatForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const msg = messageInput.value.trim();
+    const file = imageInput.files[0];
+
+    if (!msg && !file) return;
+
+    if (msg) addMessage(msg, "user");
+
+    const formData = new FormData();
+    formData.append("message", msg);
+    if (file) formData.append("image", file);
+
+    messageInput.value = "";
+    imageInput.value = null;
+
+    // Show typing indicator
+    const typingDiv = document.createElement("div");
+    typingDiv.className = "typing-indicator bot";
+    typingDiv.innerHTML = `<span class="dot"></span><span class="dot"></span><span class="dot"></span>`;
+    chatBox.appendChild(typingDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    try {
+      const res = await fetch("http://localhost:5000/chat", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      // Remove typing indicator
+      chatBox.removeChild(typingDiv);
+
+      if (data.response) addMessage(data.response, "bot");
+      if (data.report_summary) addMessage("📄 " + data.report_summary, "bot");
+
+      if (data.annotated_image_url) {
+        const fullUrl = `http://localhost:5000${data.annotated_image_url}`;
+        annotatedImage.src = fullUrl;
+        annotatedSection.style.display = "block";
+      }
+
+    } catch (err) {
+      console.error(err);
+      chatBox.removeChild(typingDiv);
+      addMessage("⚠️ Failed to get response from server.", "bot");
+    }
+  });
+</script>
+</body>
+</html>
