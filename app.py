@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory, session
+from flask import Flask, request, jsonify, send_file, send_from_directory, session
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import os
@@ -9,6 +9,12 @@ import requests
 import re
 import json
 from dotenv import load_dotenv
+from markdown import markdown
+from xhtml2pdf import pisa
+import base64
+from hospital_locator import find_nearby_orthopedic_hospitals
+
+from io import BytesIO
 
 # ==== Load environment variables ====
 load_dotenv()
@@ -39,7 +45,6 @@ HEADERS = {
 # ==== Severity Config ====
 SEVERITY_THRESHOLD = float(os.getenv("SEVERITY_THRESHOLD", "0.5"))
 
-
 # ==== Annotation Utility ====
 def draw_annotations(image_path, results, output_path):
     img = cv2.imread(image_path)
@@ -54,12 +59,10 @@ def draw_annotations(image_path, results, output_path):
             cv2.putText(img, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
     cv2.imwrite(output_path, img)
 
-
 # ==== Clean response ====
 def clean_llm_response(text):
     cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
     return cleaned
-
 
 # ==== Medical Suggestion ====
 def generate_suggestion(severity, confidence, chat_history=None):
@@ -121,7 +124,6 @@ def generate_suggestion(severity, confidence, chat_history=None):
 ## Treatment Complexity
 {"High" if severity == "Severe" else "Moderate"}"""
 
-
 # ==== Chatbot with History ====
 def generate_chatbot_response(user_input, chat_history=None):
     system_prompt = (
@@ -154,7 +156,6 @@ def generate_chatbot_response(user_input, chat_history=None):
         return cleaned
     else:
         return f"## Error\nFailed to get response from server (Status: {response.status_code})"
-
 
 # ==== Conversational Endpoint ====
 @app.route("/chat", methods=["POST"])
@@ -189,7 +190,7 @@ def chat():
                     detections.append({"bbox": [x1, y1, x2, y2], "confidence": confidence, "severity": severity})
 
             report = generate_suggestion(most_severe, highest_confidence, chat_history)
-            report_summary = report  # Now using the markdown-formatted report directly
+            report_summary = report
 
             annotated_path = os.path.join(app.config['ANNOTATED_FOLDER'], filename)
             draw_annotations(filepath, results, annotated_path)
@@ -207,11 +208,25 @@ def chat():
         "annotated_image_url": annotated_url
     })
 
-
 # ==== Download Annotated Image ====
 @app.route("/get_annotated/<filename>")
 def get_annotated_image(filename):
     return send_from_directory(ANNOTATED_FOLDER, filename)
+
+@app.route("/nearby_hospitals", methods=["POST"])
+def nearby_hospitals():
+    try:
+        data = request.get_json()
+        lat = data.get("lat")
+        lng = data.get("lng")
+
+        if not lat or not lng:
+            return jsonify({"error": "Latitude and longitude are required."}), 400
+
+        hospitals = find_nearby_orthopedic_hospitals(lat, lng)
+        return jsonify({"hospitals": hospitals})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ==== Clear Chat History ====
@@ -220,6 +235,42 @@ def clear_history():
     session.pop("history", None)
     return jsonify({"message": "Chat history cleared."})
 
+
+def generate_pdf_from_markdown(md_content, image_path=None):
+    html_content = markdown(md_content)
+
+    if image_path and os.path.exists(image_path):
+        with open(image_path, "rb") as img_file:
+            encoded_img = base64.b64encode(img_file.read()).decode("utf-8")
+            image_tag = f'<img src="data:image/jpeg;base64,{encoded_img}" width="400" style="margin-top:20px;" />'
+            html_content += f"<br><hr><h3>Annotated X-ray Image:</h3>{image_tag}"
+
+    pdf_path = "temp_report.pdf"
+    with open(pdf_path, "wb") as f:
+        pisa_status = pisa.CreatePDF(html_content, dest=f)
+    if pisa_status.err:
+        return None, "PDF generation failed"
+    return pdf_path, None
+@app.route("/download_pdf", methods=["POST"])
+def download_pdf():
+    report_md = request.form.get("report_md", "")
+    annotated_image = request.form.get("annotated_image", "")
+
+    if not report_md:
+        return jsonify({"error": "No report content provided."}), 400
+
+    image_path = os.path.join(app.config['ANNOTATED_FOLDER'], annotated_image) if annotated_image else None
+
+    pdf_path, error = generate_pdf_from_markdown(report_md, image_path=image_path)
+    if error:
+        return jsonify({"error": error}), 500
+
+    return send_file(
+        pdf_path,
+        as_attachment=True,
+        mimetype='application/pdf',
+        download_name='fracture_report.pdf'
+    )
 
 # ==== Run the App ====
 if __name__ == "__main__":
