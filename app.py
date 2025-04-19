@@ -35,7 +35,7 @@ MODEL_PATH = os.getenv("MODEL_PATH", "mnt/data/best.pt")
 model = YOLO(MODEL_PATH)
 
 # ==== Groq LLM Setup ====
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 HEADERS = {
     "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -89,7 +89,7 @@ def generate_suggestion(severity, confidence, chat_history=None):
         """
 
         payload = {
-            "model": "qwen-2.5-32b",
+            "model": "qwen-qwq-32b",
             "messages": [
                 {"role": "system",
                  "content": "You are an expert orthopedic AI assistant providing structured medical reports in markdown format."},
