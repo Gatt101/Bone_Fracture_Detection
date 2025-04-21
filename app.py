@@ -19,7 +19,7 @@ from io import BytesIO
 # ==== Load environment variables ====
 load_dotenv()
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True, origins=["http://localhost:5174"])
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "fallback_dev_key")
 
 # ==== Config ====
@@ -143,7 +143,7 @@ def generate_chatbot_response(user_input, chat_history=None):
     messages_for_llm.append({"role": "user", "content": user_input})
 
     payload = {
-        "model": "qwen-2.5-32b",
+        "model": "meta-llama/llama-4-maverick-17b-128e-instruct",
         "messages": messages_for_llm,
         "temperature": 0.7,
         "max_tokens": 300
@@ -156,57 +156,66 @@ def generate_chatbot_response(user_input, chat_history=None):
         return cleaned
     else:
         return f"## Error\nFailed to get response from server (Status: {response.status_code})"
-
-# ==== Conversational Endpoint ====
 @app.route("/chat", methods=["POST"])
 def chat():
-    message = request.form.get("message", "")
-    file = request.files.get("image", None)
-    chat_history = request.form.get("chat_history")
-    chat_history = json.loads(chat_history) if chat_history else None
+    try:
+        # Retrieve form data
+        message = request.form.get("message", "").strip()
+        file = request.files.get("image", None)
+        chat_history = request.form.get("chat_history")
+        chat_history = json.loads(chat_history) if chat_history else None
 
-    filename = None
-    report_summary, annotated_url = "", ""
+        # Validate required fields
+        if not message and not file:
+            return jsonify({"error": "Message or image is required."}), 400
 
-    if file:
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
+        filename = None
+        report_summary, annotated_url = "", ""
 
-        try:
-            image = Image.open(filepath)
-            results = model(image)
-            detections, highest_confidence, most_severe = [], 0, "No Fracture"
+        # Process the uploaded image if provided
+        if file:
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
 
-            for result in results:
-                for box in result.boxes:
-                    x1, y1, x2, y2 = box.xyxy[0].tolist()
-                    confidence = box.conf[0].item()
-                    severity = "Severe" if confidence > SEVERITY_THRESHOLD else "Mild"
-                    if confidence > highest_confidence:
-                        highest_confidence = confidence
-                    if severity == "Severe":
-                        most_severe = "Severe"
-                    detections.append({"bbox": [x1, y1, x2, y2], "confidence": confidence, "severity": severity})
+            try:
+                image = Image.open(filepath)
+                results = model(image)
+                detections, highest_confidence, most_severe = [], 0, "No Fracture"
 
-            report = generate_suggestion(most_severe, highest_confidence, chat_history)
-            report_summary = report
+                for result in results:
+                    for box in result.boxes:
+                        x1, y1, x2, y2 = box.xyxy[0].tolist()
+                        confidence = box.conf[0].item()
+                        severity = "Severe" if confidence > SEVERITY_THRESHOLD else "Mild"
+                        if confidence > highest_confidence:
+                            highest_confidence = confidence
+                        if severity == "Severe":
+                            most_severe = "Severe"
+                        detections.append({"bbox": [x1, y1, x2, y2], "confidence": confidence, "severity": severity})
 
-            annotated_path = os.path.join(app.config['ANNOTATED_FOLDER'], filename)
-            draw_annotations(filepath, results, annotated_path)
-            annotated_url = f"/get_annotated/{filename}"
+                report = generate_suggestion(most_severe, highest_confidence, chat_history)
+                report_summary = report
 
-        except Exception as e:
-            return jsonify({"error": f"## Error\nImage analysis failed: {str(e)}"}), 500
+                annotated_path = os.path.join(app.config['ANNOTATED_FOLDER'], filename)
+                draw_annotations(filepath, results, annotated_path)
+                annotated_url = f"/get_annotated/{filename}"
 
-    final_prompt = f"{report_summary}\n\nUser says: {message}" if report_summary else message
-    reply = generate_chatbot_response(final_prompt, chat_history)
+            except Exception as e:
+                return jsonify({"error": f"Image analysis failed: {str(e)}"}), 500
 
-    return jsonify({
-        "response": reply,
-        "report_summary": report_summary,
-        "annotated_image_url": annotated_url
-    })
+        # Generate chatbot response
+        final_prompt = f"{report_summary}\n\nUser says: {message}" if report_summary else message
+        reply = generate_chatbot_response(final_prompt, chat_history)
+
+        return jsonify({
+            "response": reply,
+            "report_summary": report_summary,
+            "annotated_image_url": annotated_url
+        })
+
+    except Exception as e:
+        return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
 
 # ==== Download Annotated Image ====
 @app.route("/get_annotated/<filename>")
