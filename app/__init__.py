@@ -17,9 +17,9 @@ def create_app():
     CORS(app, 
          supports_credentials=True, 
          resources={
-             r"/get_annotated/*": {"origins": ["http://localhost:5173", "http://localhost:5174"]},
-             r"/chat": {"origins": ["http://localhost:5173", "http://localhost:5174"]},
-             r"/download_pdf": {"origins": ["http://localhost:5173", "http://localhost:5174"]}
+             r"/get_annotated/*": {"origins": ["https://orthopedic-agent-rhjh9rdg8-gatt101s-projects.vercel.app"]},
+             r"/chat": {"origins": ["https://orthopedic-agent-rhjh9rdg8-gatt101s-projects.vercel.app"]},
+             r"/download_pdf": {"origins": ["https://orthopedic-agent-rhjh9rdg8-gatt101s-projects.vercel.app"]}
          },
          allow_headers=["Content-Type", "Authorization"],
          methods=["GET", "POST", "OPTIONS"])
