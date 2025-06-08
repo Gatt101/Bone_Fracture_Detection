@@ -11,3 +11,4 @@ python-dotenv~=1.1.0
 Markdown~=3.8
 xhtml2pdf~=0.2.17
 torch~=2.6.0
+gunicorn~=20.1.0
