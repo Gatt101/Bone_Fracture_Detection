@@ -13,16 +13,24 @@ def create_app():
     load_dotenv()
     
     app = Flask(__name__)
+    
     # Configure CORS with explicit route patterns
+    # Updated to include the correct origin from the error message
+    allowed_origins = [
+        "https://orthopedic-agent.vercel.app",
+        "https://orthopedic-agent-rhjh9rdg8-gatt101s-projects.vercel.app"
+    ]
+    
     CORS(app, 
          supports_credentials=True, 
          resources={
-             r"/get_annotated/*": {"origins": ["https://orthopedic-agent-rhjh9rdg8-gatt101s-projects.vercel.app"]},
-             r"/chat": {"origins": ["https://orthopedic-agent-rhjh9rdg8-gatt101s-projects.vercel.app"]},
-             r"/download_pdf": {"origins": ["https://orthopedic-agent-rhjh9rdg8-gatt101s-projects.vercel.app"]}
+             r"/get_annotated/*": {"origins": allowed_origins},
+             r"/chat": {"origins": allowed_origins},
+             r"/download_pdf": {"origins": allowed_origins}
          },
          allow_headers=["Content-Type", "Authorization"],
          methods=["GET", "POST", "OPTIONS"])
+    
     app.secret_key = os.getenv("FLASK_SECRET_KEY", "fallback_dev_key")
     
     # Configure upload folders with absolute paths
