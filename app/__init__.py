@@ -28,8 +28,17 @@ def create_app():
              r"/chat": {"origins": allowed_origins},
              r"/download_pdf": {"origins": allowed_origins}
          },
-         allow_headers=["Content-Type", "Authorization"],
-         methods=["GET", "POST", "OPTIONS"])
+         allow_headers=[
+             "Content-Type", 
+             "Authorization", 
+             "Accept", 
+             "Origin", 
+             "X-Requested-With",
+             "Access-Control-Request-Method",
+             "Access-Control-Request-Headers"
+         ],
+         expose_headers=["Content-Type", "Content-Disposition"],
+         methods=["GET", "POST", "OPTIONS", "PUT", "DELETE"])
     
     app.secret_key = os.getenv("FLASK_SECRET_KEY", "fallback_dev_key")
     

@@ -2,11 +2,12 @@ import logging
 import os
 import json
 import cv2
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, make_response
 from werkzeug.utils import secure_filename
 from ultralytics import YOLO
 from app.utils.image_processing import draw_annotations
 from app.utils.llm_utils import generate_suggestion, generate_chatbot_response
+from flask_cors import cross_origin
 
 bp = Blueprint('chat', __name__)
 
@@ -23,8 +24,21 @@ except Exception as e:
     logger.error(f"Failed to load YOLO model: {str(e)}")
     model = None  # Explicitly set to None
 
-@bp.route("/chat", methods=["POST"])
+@bp.route("/chat", methods=["POST", "OPTIONS"])
+@cross_origin(origins=["https://orthopedic-agent.vercel.app", "https://orthopedic-agent-rhjh9rdg8-gatt101s-projects.vercel.app"], 
+              supports_credentials=True,
+              methods=["POST", "OPTIONS"],
+              allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"])
 def chat():
+    # Handle preflight OPTIONS request
+    if request.method == "OPTIONS":
+        response = make_response()
+        response.headers.add("Access-Control-Allow-Origin", "https://orthopedic-agent.vercel.app")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, Origin, X-Requested-With")
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        response.headers.add("Access-Control-Allow-Credentials", "true")
+        return response
+    
     try:
         if model is None:
             logger.error("YOLO model is not loaded. Cannot process image.")
@@ -157,7 +171,11 @@ def chat():
                 "annotated_image_url": response_data["annotated_image_url"]
             }), 500
 
-        return jsonify(response_data)
+        response = jsonify(response_data)
+        # Add CORS headers explicitly for this response
+        response.headers.add("Access-Control-Allow-Origin", "https://orthopedic-agent.vercel.app")
+        response.headers.add("Access-Control-Allow-Credentials", "true")
+        return response
 
     except Exception as e:
         logger.error(f"Unexpected error in chat route: {str(e)}")
