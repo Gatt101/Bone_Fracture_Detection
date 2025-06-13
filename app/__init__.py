@@ -26,6 +26,7 @@ def create_app():
          resources={
              r"/get_annotated/*": {"origins": allowed_origins},
              r"/chat": {"origins": allowed_origins},
+             r"/chat\+img": {"origins": allowed_origins},
              r"/download_pdf": {"origins": allowed_origins}
          },
          allow_headers=["Content-Type", "Authorization"],
