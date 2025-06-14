@@ -41,8 +41,7 @@ def create_app():
     # Configure CORS with explicit route patterns
     allowed_origins = [
         "https://orthopedic-agent.vercel.app",
-        "https://orthopedic-agent-rhjh9rdg8-gatt101s-projects.vercel.app",
-        "http://localhost:3000",  # Added for local development
+        "https://orthopedic-agent-rhjh9rdg8-gatt101s-projects.vercel.app"
     ]
     
     CORS(app, 
@@ -51,8 +50,7 @@ def create_app():
              r"/get_annotated/*": {"origins": allowed_origins},
              r"/chat": {"origins": allowed_origins},
              r"/chat\+img": {"origins": allowed_origins},
-             r"/download_pdf": {"origins": allowed_origins},
-             r"/clear_history": {"origins": allowed_origins},  # Added for clear_history endpoint
+             r"/download_pdf": {"origins": allowed_origins}
          },
          allow_headers=["Content-Type", "Authorization"],
          methods=["GET", "POST", "OPTIONS"])
