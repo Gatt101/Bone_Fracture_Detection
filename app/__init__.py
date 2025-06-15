@@ -1,6 +1,6 @@
 import os
 import logging
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_cors import CORS
 from flask_session import Session
 from dotenv import load_dotenv
@@ -41,7 +41,8 @@ def create_app():
     # Configure CORS with explicit route patterns
     allowed_origins = [
         "https://orthopedic-agent.vercel.app",
-        "https://orthopedic-agent-rhjh9rdg8-gatt101s-projects.vercel.app"
+        "https://orthopedic-agent-rhjh9rdg8-gatt101s-projects.vercel.app",
+        "http://localhost:5173"
     ]
     
     CORS(app, 
@@ -49,7 +50,8 @@ def create_app():
          resources={
              r"/chat": {"origins": allowed_origins},
              r"/chatimg": {"origins": allowed_origins},
-             r"/download_pdf": {"origins": allowed_origins}
+             r"/download_pdf": {"origins": allowed_origins},
+             r"/annotated_images/*": {"origins": allowed_origins}
          },
          allow_headers=["Content-Type", "Authorization"],
          methods=["GET", "POST", "OPTIONS"])
@@ -57,15 +59,24 @@ def create_app():
     # Configure upload folder with absolute path
     base_dir = os.path.abspath(os.path.dirname(__file__))
     app.config['UPLOAD_FOLDER'] = os.path.join(base_dir, "uploads")
-    
-    # Create upload directory if it doesn't exist
+    app.config['ANNOTATED_FOLDER'] = os.path.join(base_dir, "annotated_images")
+
+    # Create upload and annotated directories if they don't exist
     try:
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         logger.info(f"Created UPLOAD_FOLDER: {app.config['UPLOAD_FOLDER']}")
+        
+        os.makedirs(app.config['ANNOTATED_FOLDER'], exist_ok=True)
+        logger.info(f"Created ANNOTATED_FOLDER: {app.config['ANNOTATED_FOLDER']}")
     except Exception as e:
-        logger.error(f"Failed to create upload directory: {str(e)}")
+        logger.error(f"Failed to create required directories: {str(e)}")
         raise
-    
+
+    # Route to serve annotated images
+    @app.route('/annotated_images/<filename>')
+    def serve_annotated_image(filename):
+        return send_from_directory(app.config['ANNOTATED_FOLDER'], filename)
+
     # Register blueprints
     try:
         from app.routes import main, chat, hospital
