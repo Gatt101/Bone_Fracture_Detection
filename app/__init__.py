@@ -47,27 +47,23 @@ def create_app():
     CORS(app, 
          supports_credentials=True, 
          resources={
-             r"/get_annotated/*": {"origins": allowed_origins},
              r"/chat": {"origins": allowed_origins},
-             r"/chat\+img": {"origins": allowed_origins},
+             r"/chatimg": {"origins": allowed_origins},
              r"/download_pdf": {"origins": allowed_origins}
          },
          allow_headers=["Content-Type", "Authorization"],
          methods=["GET", "POST", "OPTIONS"])
     
-    # Configure upload folders with absolute paths
+    # Configure upload folder with absolute path
     base_dir = os.path.abspath(os.path.dirname(__file__))
     app.config['UPLOAD_FOLDER'] = os.path.join(base_dir, "uploads")
-    app.config['ANNOTATED_FOLDER'] = os.path.join(base_dir, "annotated_images")
     
-    # Create directories if they don't exist
+    # Create upload directory if it doesn't exist
     try:
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-        os.makedirs(app.config['ANNOTATED_FOLDER'], exist_ok=True)
         logger.info(f"Created UPLOAD_FOLDER: {app.config['UPLOAD_FOLDER']}")
-        logger.info(f"Created ANNOTATED_FOLDER: {app.config['ANNOTATED_FOLDER']}")
     except Exception as e:
-        logger.error(f"Failed to create directories: {str(e)}")
+        logger.error(f"Failed to create upload directory: {str(e)}")
         raise
     
     # Register blueprints
