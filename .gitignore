@@ -2,3 +2,4 @@
 .venv/
 _pycache_/
 .env
+fine_tune/
