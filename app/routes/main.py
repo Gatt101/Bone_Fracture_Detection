@@ -7,6 +7,7 @@ from io import BytesIO
 import tempfile
 import base64
 import shutil
+import requests
 from markdown2 import markdown
 
 bp = Blueprint('main', __name__)
@@ -42,6 +43,25 @@ def get_annotated_image(filename):
         logger.error(f"Error serving annotated image {filename}: {str(e)}")
         return jsonify({"error": "Failed to serve image", "details": str(e)}), 500
 
+def download_image_from_url(url, temp_dir):
+    """Download image from URL and save to temporary directory"""
+    try:
+        logger.info(f"Downloading image from URL: {url}")
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        
+        # Save to temporary file
+        image_path = os.path.join(temp_dir, "annotated_image.png")
+        with open(image_path, 'wb') as f:
+            f.write(response.content)
+        
+        logger.info(f"Downloaded image to: {image_path}")
+        return image_path
+        
+    except Exception as e:
+        logger.error(f"Failed to download image from URL: {str(e)}")
+        return None
+
 @bp.route("/download_pdf", methods=["POST"])
 def download_pdf():
     """Generate a PDF from markdown report and optional base64-encoded image using pdfkit"""
@@ -54,6 +74,7 @@ def download_pdf():
 
         report_md = request.form.get("report_md", "").strip()
         image_base64 = request.form.get("image_base64", None)
+        image_url = request.form.get("image_url", None)  # Cloudinary URL
 
         if not report_md:
             logger.error("No report markdown provided")
@@ -63,7 +84,7 @@ def download_pdf():
         temp_dir = tempfile.mkdtemp()
         logger.info(f"Created temporary directory: {temp_dir}")
 
-        # If an image is provided, decode and save it temporarily
+        # Handle image - prioritize base64, then URL, then filename
         image_path = None
         if image_base64:
             try:
@@ -72,13 +93,18 @@ def download_pdf():
                 image_path = os.path.join(temp_dir, "annotated_image.png")
                 with open(image_path, 'wb') as f:
                     f.write(image_data)
-                logger.info(f"Saved temporary image to: {image_path}")
+                logger.info(f"Saved temporary image from base64 to: {image_path}")
             except Exception as e:
                 logger.error(f"Failed to decode base64 image: {str(e)}")
                 shutil.rmtree(temp_dir)
                 return jsonify({"error": f"Failed to process base64 image: {str(e)}"}), 400
+        elif image_url:
+            # Download image from Cloudinary URL
+            image_path = download_image_from_url(image_url, temp_dir)
+            if not image_path:
+                logger.warning("Failed to download image from URL, proceeding without image")
         else:
-            logger.info("No image_base64 received in download_pdf request")
+            logger.info("No image provided in download_pdf request")
 
         # Convert markdown to HTML
         logger.info("Converting markdown to HTML")

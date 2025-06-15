@@ -4,6 +4,8 @@ from flask import Flask, send_from_directory
 from flask_cors import CORS
 from flask_session import Session
 from dotenv import load_dotenv
+import cloudinary
+import cloudinary.uploader
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -12,9 +14,9 @@ logger = logging.getLogger(__name__)
 def create_app():
     # Load environment variables
     load_dotenv()
-    
+
     app = Flask(__name__)
-    
+
     # Validate required environment variables
     required_env_vars = ["FLASK_SECRET_KEY", "MODEL_PATH", "SEVERITY_THRESHOLD"]
     for var in required_env_vars:
@@ -44,7 +46,7 @@ def create_app():
         "https://orthopedic-agent-rhjh9rdg8-gatt101s-projects.vercel.app",
         "http://localhost:5173"
     ]
-    
+
     CORS(app, 
          supports_credentials=True, 
          resources={
@@ -55,7 +57,7 @@ def create_app():
          },
          allow_headers=["Content-Type", "Authorization"],
          methods=["GET", "POST", "OPTIONS"])
-    
+
     # Configure upload folder with absolute path
     base_dir = os.path.abspath(os.path.dirname(__file__))
     app.config['UPLOAD_FOLDER'] = os.path.join(base_dir, "uploads")
@@ -65,14 +67,27 @@ def create_app():
     try:
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         logger.info(f"Created UPLOAD_FOLDER: {app.config['UPLOAD_FOLDER']}")
-        
+
         os.makedirs(app.config['ANNOTATED_FOLDER'], exist_ok=True)
         logger.info(f"Created ANNOTATED_FOLDER: {app.config['ANNOTATED_FOLDER']}")
     except Exception as e:
         logger.error(f"Failed to create required directories: {str(e)}")
         raise
 
-    # Route to serve annotated images
+    # Configure Cloudinary
+    try:
+        cloudinary.config( 
+            cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+            api_key=os.getenv("CLOUDINARY_API_KEY"), 
+            api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+            secure=True
+        )
+        logger.info("Cloudinary configured successfully.")
+    except Exception as e:
+        logger.error(f"Cloudinary configuration failed: {str(e)}")
+        raise
+
+    # Route to serve annotated images (still present for local dev fallback)
     @app.route('/annotated_images/<filename>')
     def serve_annotated_image(filename):
         return send_from_directory(app.config['ANNOTATED_FOLDER'], filename)

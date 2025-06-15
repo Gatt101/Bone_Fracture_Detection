@@ -7,6 +7,7 @@ from werkzeug.utils import secure_filename
 from ultralytics import YOLO
 from app.utils.image_processing import draw_annotations
 from app.utils.llm_utils import generate_suggestion, generate_chatbot_response
+from app.utils.cloudinary_utils import upload_image_to_cloudinary, upload_cv2_image_to_cloudinary
 from markdown2 import markdown
 
 bp = Blueprint('chat', __name__)
@@ -32,6 +33,7 @@ def process_image_with_yolo(file):
     if not filename.lower().endswith(('.png', '.jpg', '.jpeg')):
         raise ValueError("Invalid file format. Please upload a PNG or JPEG image")
 
+    # Save uploaded file temporarily
     upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
     file.save(upload_path)
 
@@ -63,21 +65,50 @@ def process_image_with_yolo(file):
     logger.info(f"YOLO detections: {len(detections)} found")
     annotated_img = draw_annotations(img, results)
 
-    # Save annotated image
+    # Upload original image to Cloudinary
+    original_cloudinary_result = None
+    try:
+        original_cloudinary_result = upload_image_to_cloudinary(
+            upload_path, 
+            folder="orthopedic-images/original"
+        )
+        logger.info(f"Uploaded original image to Cloudinary: {original_cloudinary_result['url']}")
+    except Exception as e:
+        logger.error(f"Failed to upload original image to Cloudinary: {str(e)}")
+
+    # Upload annotated image to Cloudinary
+    annotated_cloudinary_result = None
+    try:
+        annotated_filename = f"annotated_{filename}"
+        annotated_cloudinary_result = upload_cv2_image_to_cloudinary(
+            annotated_img,
+            annotated_filename,
+            folder="orthopedic-images/annotated"
+        )
+        logger.info(f"Uploaded annotated image to Cloudinary: {annotated_cloudinary_result['url']}")
+    except Exception as e:
+        logger.error(f"Failed to upload annotated image to Cloudinary: {str(e)}")
+
+    # Also save annotated image locally as fallback
     annotated_folder = current_app.config['ANNOTATED_FOLDER']
     os.makedirs(annotated_folder, exist_ok=True)
     annotated_filename = f"annotated_{filename}"
     annotated_path = os.path.join(annotated_folder, annotated_filename)
     cv2.imwrite(annotated_path, annotated_img)
-    logger.info(f"Saved annotated image to: {annotated_path}")
+    logger.info(f"Saved annotated image locally: {annotated_path}")
 
+    # Clean up uploaded file
     os.remove(upload_path)
 
     return {
         "detections": detections,
         "highest_confidence": highest_confidence,
         "most_severe": most_severe,
-        "annotated_image_filename": annotated_filename
+        "annotated_image_filename": annotated_filename,
+        "original_image_url": original_cloudinary_result['url'] if original_cloudinary_result else None,
+        "annotated_image_url": annotated_cloudinary_result['url'] if annotated_cloudinary_result else None,
+        "original_public_id": original_cloudinary_result['public_id'] if original_cloudinary_result else None,
+        "annotated_public_id": annotated_cloudinary_result['public_id'] if annotated_cloudinary_result else None
     }
 
 @bp.route("/chatimg", methods=["POST"])
@@ -109,9 +140,13 @@ def chat_with_image():
         response_data["detections"] = image_data["detections"]
 
         if image_data.get("annotated_image_filename"):
-            response_data["annotated_image_url"] = url_for('serve_annotated_image',
-                                                            filename=image_data["annotated_image_filename"],
-                                                            _external=True)
+            # Use Cloudinary URL if available, otherwise fallback to local URL
+            if image_data.get("annotated_image_url"):
+                response_data["annotated_image_url"] = image_data["annotated_image_url"]
+            else:
+                response_data["annotated_image_url"] = url_for('serve_annotated_image',
+                                                                filename=image_data["annotated_image_filename"],
+                                                                _external=True)
 
         if image_data["detections"]:
             response_data["report_summary"] = generate_suggestion(
@@ -161,9 +196,13 @@ def _handle_multipart_chat():
             response_data["detections"] = image_data["detections"]
 
             if image_data.get("annotated_image_filename"):
-                response_data["annotated_image_url"] = url_for('serve_annotated_image',
-                                                                filename=image_data["annotated_image_filename"],
-                                                                _external=True)
+                # Use Cloudinary URL if available, otherwise fallback to local URL
+                if image_data.get("annotated_image_url"):
+                    response_data["annotated_image_url"] = image_data["annotated_image_url"]
+                else:
+                    response_data["annotated_image_url"] = url_for('serve_annotated_image',
+                                                                    filename=image_data["annotated_image_filename"],
+                                                                    _external=True)
 
             if image_data["detections"]:
                 response_data["report_summary"] = generate_suggestion(
