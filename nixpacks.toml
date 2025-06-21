@@ -1,6 +1,6 @@
 [start]
-cmd = "gunicorn run:app"
+cmd = "gunicorn run:app --bind 0.0.0.0:$PORT"
 
 [build]
-nixPkgs = ["libGL"]
+nixPkgs = ["libGL", "libGLU", "glib", "gcc", "pkg-config", "libffi", "openssl", "zlib"]
 buildCommand = "pip install -r requirements.txt"
