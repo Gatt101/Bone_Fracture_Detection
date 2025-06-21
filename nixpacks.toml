@@ -1,4 +1,5 @@
-# nixpacks.toml
-
 [start]
 cmd = "gunicorn run:app"
+
+[build]
+buildCommand = "apk add --no-cache libglvnd" 
