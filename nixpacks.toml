@@ -2,4 +2,5 @@
 cmd = "gunicorn run:app"
 
 [build]
-buildCommand = "apk add --no-cache libglvnd" 
+nixPkgs = ["libGL"]
+buildCommand = "pip install -r requirements.txt"
