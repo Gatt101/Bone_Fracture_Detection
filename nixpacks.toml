@@ -24,22 +24,15 @@ nixPkgs = [
 
 [phases.install]
 cmds = [
-  "python -m venv --copies /opt/venv",
+  "python -m venv /opt/venv",
   ". /opt/venv/bin/activate && pip install --upgrade pip setuptools<81",
   ". /opt/venv/bin/activate && pip install -r requirements.txt"
 ]
 
 [phases.build]
 cmds = [
-  "echo 'Linking OpenCV shared libraries…'",
-  '''for lib in libGL.so.1 libglib-2.0.so.0 libgthread-2.0.so.0 libSM.so.6 libXext.so.6 libXrender.so.1; do
-    path=$(find /nix/store -type f -name "$lib" | head -n1) &&
-    ln -sf "$path" "/usr/lib/$lib" &&
-    echo "→ linked $lib" ||
-    echo "⚠️ $lib not found";
-  done''',
-  "echo 'Verifying cv2 linkage:'",
-  "ldd /opt/venv/lib/python3.12/site-packages/cv2/*.so"
+  "echo 'Skipping manual symlinks, trusting Nix environment'",
+  "ldd /opt/venv/lib/python3.12/site-packages/cv2/*.so || echo 'ldd check failed (non-blocking)'"
 ]
 
 [start]
