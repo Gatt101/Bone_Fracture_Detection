@@ -15,11 +15,10 @@ nixPkgs = [
   "mesa",
   "pkg-config",
   "glib",
-  "libGL",
   "libGLU",
-  "libSM",
-  "libXext",
-  "libXrender"
+  "xorg.libSM",
+  "xorg.libXext",
+  "xorg.libXrender"
 ]
 
 [phases.install]
