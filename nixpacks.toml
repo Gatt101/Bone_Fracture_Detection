@@ -39,12 +39,12 @@ cmds = [
 [phases.build]
 cmds = [
   "echo 'Linking OpenCV shared libraries…'",
-  "for lib in libGL.so.1 libglib-2.0.so.0 libgthread-2.0.so.0 libSM.so.6 libXext.so.6 libXrender.so.1; do \
-     path=$(find /nix/store -type f -name \"$lib\" | head -n1) && \
-     ln -sf \"$path\" \"/usr/lib/$lib\" && \
-     echo \"→ linked $lib\" || \
-     echo \"⚠️ $lib not found\"; \
-   done",
+  """for lib in libGL.so.1 libglib-2.0.so.0 libgthread-2.0.so.0 libSM.so.6 libXext.so.6 libXrender.so.1; do
+    path=$(find /nix/store -type f -name "$lib" | head -n1) &&
+    ln -sf "$path" "/usr/lib/$lib" &&
+    echo "→ linked $lib" ||
+    echo "⚠️ $lib not found";
+  done""",
   "echo 'Verifying cv2 linkage:'",
   "ldd /opt/venv/lib/python3.12/site-packages/cv2/*.so"
 ]
