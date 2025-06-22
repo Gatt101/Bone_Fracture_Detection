@@ -1,33 +1,27 @@
 # nixpacks.toml
 
-# Use the Python provider
 providers = ["python"]
 
 [variables]
-# Unbuffered Python output
 PYTHONUNBUFFERED = "1"
-# Railway will inject its port into $PORT; no need to hardcode here
 
-# Use a recent Nixpkgs snapshot
 [build]
 nixpkgsArchive = "https://github.com/NixOS/nixpkgs/archive/refs/tags/23.05.tar.gz"
 
-# Install system-level libraries needed by cv2
 [phases.setup]
 nixPkgs = [
-  "python312",      # Python 3.12
-  "gcc",            # compiler for any C extensions
-  "mesa",           # for libGL
-  "pkg-config",     # for discovering libraries
-  "glib",           # provides libglib-2.0.so.0
-  "libGL",          # provides libGL.so.1
-  "libGLU",         # optional OpenGL utilities
-  "libSM",          # provides libSM.so.6
-  "libXext",        # provides libXext.so.6
-  "libXrender"      # provides libXrender.so.1
+  "python312",
+  "gcc",
+  "mesa",
+  "pkg-config",
+  "glib",
+  "libGL",
+  "libGLU",
+  "libSM",
+  "libXext",
+  "libXrender"
 ]
 
-# Create & activate a venv, pin setuptools, then install your Python deps
 [phases.install]
 cmds = [
   "python -m venv --copies /opt/venv",
@@ -35,20 +29,18 @@ cmds = [
   ". /opt/venv/bin/activate && pip install -r requirements.txt"
 ]
 
-# Link the nix-store copies of those .so files into /usr/lib so cv2 can find them
 [phases.build]
 cmds = [
   "echo 'Linking OpenCV shared libraries…'",
-  """for lib in libGL.so.1 libglib-2.0.so.0 libgthread-2.0.so.0 libSM.so.6 libXext.so.6 libXrender.so.1; do
+  '''for lib in libGL.so.1 libglib-2.0.so.0 libgthread-2.0.so.0 libSM.so.6 libXext.so.6 libXrender.so.1; do
     path=$(find /nix/store -type f -name "$lib" | head -n1) &&
     ln -sf "$path" "/usr/lib/$lib" &&
     echo "→ linked $lib" ||
     echo "⚠️ $lib not found";
-  done""",
+  done''',
   "echo 'Verifying cv2 linkage:'",
   "ldd /opt/venv/lib/python3.12/site-packages/cv2/*.so"
 ]
 
-# How to start your app on Railway
 [start]
 cmd = "gunicorn run:app --bind 0.0.0.0:$PORT"
