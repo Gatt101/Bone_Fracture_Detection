@@ -1,0 +1,8 @@
+annotated_images/
+uploads/
+mnt/
+temp_report.pdf
+*.png
+*.jpg
+*.jpeg
+*.pdf 
